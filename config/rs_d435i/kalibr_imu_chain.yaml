@@ -1,0 +1,53 @@
+%YAML:1.0
+
+imu0:
+  T_i_b:
+    - [1.0, 0.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0, 0.0]
+    - [0.0, 0.0, 1.0, 0.0]
+    - [0.0, 0.0, 0.0, 1.0]
+  #allan_variance noise and walk by static analysis
+  #accelerometer_noise_density: 0.0011199168687763285 
+  #accelerometer_random_walk: 5.175060108058893e-05 
+  #gyroscope_noise_density: 0.00033039301378238686 
+  #gyroscope_random_walk: 2.3110320094386732e-06 
+
+  #Inflated values
+  accelerometer_noise_density:  0.02239833737 #x20 
+  accelerometer_random_walk:  0.00051750601 #x10
+  gyroscope_noise_density:   0.0033039301 #x5
+  gyroscope_random_walk:   0.00002311032 #x10
+
+
+  rostopic: '/camera/camera/imu' 
+  update_rate: 400 
+  time_offset: 0.0
+  # three different modes supported:
+  # "calibrated" (same as "kalibr"), "kalibr", "rpng"
+  model: "kalibr"
+  # how to get from Kalibr imu.yaml result file:
+  #   - Tw is imu0:gyroscopes:M:
+  #   - R_IMUtoGYRO: is imu0:gyroscopes:C_gyro_i:
+  #   - Ta is imu0:accelerometers:M:
+  #   - R_IMUtoACC not used by Kalibr
+  #   - Tg is imu0:gyroscopes:A:
+  Tw:
+    - [1.0038324137185541, 0.0, 0.0]
+    - [-0.001440768685142908, 1.0072971571159464, 0.0]
+    - [0.0003158966567878807, 0.0013519890254087995, 1.0062398120655736]
+  R_IMUtoGYRO:
+    - [0.9998864004310856, -0.014180159662341332, -0.005109726501120864]
+    - [0.01418267771271222, 0.9998993163808312, 0.0004568960963675572]
+    - [0.005102733175768178, -0.0005293137973334733, 0.9999868408839387]
+  Ta:
+    - [1.0059924105236089, 0.0, 0.0]
+    - [-0.01797565680704026, 0.9916116766756328, 0.0]
+    - [0.04056517023973616, 0.019164074103128276, 0.9870416325458525]
+  R_IMUtoACC:
+    - [ 1.0, 0.0, 0.0 ]
+    - [ 0.0, 1.0, 0.0 ]
+    - [ 0.0, 0.0, 1.0 ]
+  Tg:
+    - [-8.372147445319034e-05, -0.0004897188902842063, 0.003082148768221516]
+    - [-1.1522945481378444e-05, -0.00023871818649454115, 0.0005066286153391031]
+    - [0.00024115470628791898, 0.00020423716652789089, -0.00013756159027481952]

@@ -49,6 +49,8 @@ ROS2Visualizer::ROS2Visualizer(std::shared_ptr<rclcpp::Node> node, std::shared_p
   PRINT_DEBUG("Publishing: %s\n", pub_poseimu->get_topic_name());
   pub_odomimu = node->create_publisher<nav_msgs::msg::Odometry>("odomimu", 2);
   PRINT_DEBUG("Publishing: %s\n", pub_odomimu->get_topic_name());
+  pub_vio = node->create_publisher<px4_msgs::msg::VehicleOdometry>("/fmu/in/vehicle_visual_odometry", 10);
+  PRINT_DEBUG("Publishing: %s\n", pub_vio->get_topic_name());
   pub_pathimu = node->create_publisher<nav_msgs::msg::Path>("pathimu", 2);
   PRINT_DEBUG("Publishing: %s\n", pub_pathimu->get_topic_name());
 
@@ -266,6 +268,38 @@ void ROS2Visualizer::visualize() {
   // PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for visualization\n" RESET, time_total);
 }
 
+void ROS2Visualizer::publish_vio_px4(nav_msgs::msg::Odometry msg) {
+  px4_msgs::msg::VehicleOdometry vio_msg;
+  //RealSense D435i IMU frame is Right-Down-Front
+  //OpenVINS reports orientation in the global frame which is FLU while PX4 requires FRD
+  Eigen::Quaterniond flu_orientation = Eigen::Quaterniond(msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z);
+  static const Eigen::Quaterniond q_rot(0.0, 1.0, 0.0, 0.0);
+  Eigen::Quaterniond frd_orientation = q_rot * flu_orientation;
+  vio_msg.q = {static_cast<float>(frd_orientation.w()), static_cast<float>(frd_orientation.x()), static_cast<float>(frd_orientation.y()), static_cast<float>(frd_orientation.z())};
+  vio_msg.orientation_variance = {(float)msg.pose.covariance[21], (float)msg.pose.covariance[28], (float)msg.pose.covariance[35]};
+  //OpenVINS reports position in the global frame which is FLU while PX4 requires FRD
+  vio_msg.pose_frame = px4_msgs::msg::VehicleOdometry::POSE_FRAME_NED;
+  Eigen::Vector3d frd_position = Eigen::Vector3d(msg.pose.pose.position.x, -msg.pose.pose.position.y, -msg.pose.pose.position.z);
+  vio_msg.position = {static_cast<float>(frd_position.x()), static_cast<float>(frd_position.y()), static_cast<float>(frd_position.z())};
+  //OpenVINS reports velocity in the local frame RDF while PX4 requires FRD
+  vio_msg.velocity_frame = px4_msgs::msg::VehicleOdometry::VELOCITY_FRAME_BODY_FRD;
+  Eigen::Vector3d frd_linear_velocity = Eigen::Vector3d(msg.twist.twist.linear.z, msg.twist.twist.linear.x, msg.twist.twist.linear.y);
+  Eigen::Vector3d frd_angular_velocity = Eigen::Vector3d(msg.twist.twist.linear.z, msg.twist.twist.linear.x, msg.twist.twist.linear.y);
+  vio_msg.velocity = {frd_linear_velocity.x(), frd_linear_velocity.y(), frd_linear_velocity.z()};
+  vio_msg.angular_velocity = {frd_angular_velocity.x(), frd_angular_velocity.y(), frd_angular_velocity.z()};
+  vio_msg.position_variance = {(float)msg.pose.covariance[14], (float)msg.pose.covariance[0], (float)msg.pose.covariance[7]};
+  vio_msg.velocity_variance = {(float)msg.twist.covariance[14], (float)msg.twist.covariance[0], (float)msg.twist.covariance[7]};
+  //Header
+  vio_msg.timestamp_sample = (static_cast<uint64_t>(msg.header.stamp.sec) * static_cast<uint64_t>(1000000)) + (static_cast<uint64_t>(msg.header.stamp.nanosec) / static_cast<uint64_t>(1000));
+  vio_msg.reset_counter = 0;
+  vio_msg.quality = 0;
+  vio_msg.timestamp = static_cast<uint64_t>(_node->get_clock()->now().nanoseconds()) / static_cast<uint64_t>(1000);
+  if (vio_msg.timestamp_sample > vio_msg.timestamp) {
+    vio_msg.timestamp = vio_msg.timestamp_sample;
+  }
+  pub_vio->publish(vio_msg);
+}
+
 void ROS2Visualizer::visualize_odometry(double timestamp) {
 
   // Return if we have not inited and a second has passes
@@ -280,7 +314,7 @@ void ROS2Visualizer::visualize_odometry(double timestamp) {
     return;
 
   // Publish our odometry message if requested
-  if (pub_odomimu->get_subscription_count() != 0) {
+  if (pub_odomimu->get_subscription_count() != 0 || pub_vio->get_subscription_count() != 0) {
 
     // Our odometry message
     nav_msgs::msg::Odometry odomIinM;
@@ -322,6 +356,8 @@ void ROS2Visualizer::visualize_odometry(double timestamp) {
       }
     }
     pub_odomimu->publish(odomIinM);
+    // Publish Translated Odom Info for PX4
+    publish_vio_px4(odomIinM);
   }
 
   // Publish our transform on TF

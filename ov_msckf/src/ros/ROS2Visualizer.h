@@ -25,7 +25,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include <image_transport/image_transport.h>
+#include <image_transport/image_transport.hpp>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/time_synchronizer.h>
@@ -42,8 +42,10 @@
 #include <std_msgs/msg/float64.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/transform_datatypes.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include <px4_msgs/msg/vehicle_odometry.hpp>
 
 #include <atomic>
 #include <fstream>
@@ -53,7 +55,7 @@
 #include <Eigen/Eigen>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 
 namespace ov_core {
 class YamlParser;
@@ -135,6 +137,9 @@ protected:
   /// Publish loop-closure information of current pose and active track information
   void publish_loopclosure_information();
 
+  /// Publish Odometry Information translated for PX4
+  void publish_vio_px4(nav_msgs::msg::Odometry msg);
+
   /// Global node handler
   std::shared_ptr<rclcpp::Node> _node;
 
@@ -149,6 +154,7 @@ protected:
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_poseimu;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odomimu;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_pathimu;
+  rclcpp::Publisher<px4_msgs::msg::VehicleOdometry>::SharedPtr pub_vio;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_points_msckf, pub_points_slam, pub_points_aruco, pub_points_sim;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_loop_pose, pub_loop_extrinsic;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud>::SharedPtr pub_loop_point;
